@@ -20,6 +20,27 @@ function fmtDateTime(iso) {
   });
 }
 
+function buildFrequencyLinePath(width, height, tSec, phase = 0) {
+  const steps = 30;
+  const baseY = height * 0.58;
+  const ampMain = height * 0.16;
+  const ampDetail = height * 0.06;
+  const speedA = tSec * 0.9 + phase;
+  const speedB = tSec * 1.4 - phase * 0.6;
+
+  let d = "";
+  for (let i = 0; i <= steps; i++) {
+    const p = i / steps;
+    const x = p * width;
+    const y =
+      baseY +
+      Math.sin(p * Math.PI * 2 * 1.7 + speedA) * ampMain +
+      Math.sin(p * Math.PI * 2 * 3.1 + speedB) * ampDetail;
+    d += i === 0 ? `M ${x.toFixed(2)} ${y.toFixed(2)}` : ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }
+  return d;
+}
+
 export function SetupStep({
   onDone,
   onOpenSaved,
@@ -32,6 +53,9 @@ export function SetupStep({
   const [volPlaying, setVolPlaying] = useState(false);
   const savedProfiles = useMemo(() => loadProfiles(), []);
   const volRef = useRef(null);
+  const heroSvgRef = useRef(null);
+  const heroWaveRef = useRef(null);
+  const heroWaveRef2 = useRef(null);
   const customMode = bandPresetId === "custom";
   const customFreqList =
     Array.isArray(customFreqs) && customFreqs.length > 0
@@ -75,6 +99,41 @@ export function SetupStep({
   useEffect(() => {
     return () => {
       volRef.current?.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    const svg = heroSvgRef.current;
+    const lineA = heroWaveRef.current;
+    const lineB = heroWaveRef2.current;
+    if (!svg || !lineA || !lineB) return;
+
+    let width = 0;
+    let height = 0;
+    let rafId = null;
+
+    const updateSize = () => {
+      const rect = svg.getBoundingClientRect();
+      width = Math.max(320, rect.width);
+      height = Math.max(160, rect.height);
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    };
+
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(svg);
+    updateSize();
+
+    const animate = (ts) => {
+      const tSec = ts / 1000;
+      lineA.setAttribute("d", buildFrequencyLinePath(width, height, tSec, 0));
+      lineB.setAttribute("d", buildFrequencyLinePath(width, height, tSec, 0.9));
+      rafId = requestAnimationFrame(animate);
+    };
+    rafId = requestAnimationFrame(animate);
+
+    return () => {
+      ro.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -148,15 +207,24 @@ export function SetupStep({
 
   return (
     <div className="screen setup">
-      <div className="screen-h">
-        <div className="kicker accent">Step 01 · Setup</div>
-        <h2>Set up your test session.</h2>
-        <p className="lede">
-          This tool measures the minimum audible volume for each ear at{" "}
-          {activeFreqs.length} frequencies and generates a relative left/right
-          balance correction for your headphones. It is <em>not</em> a medical
-          hearing test.
-        </p>
+      <div className="hero setup-hero">
+        <svg className="hero-wave" ref={heroSvgRef} aria-hidden="true">
+          <path className="hero-wave-line hero-wave-line-soft" ref={heroWaveRef2} />
+          <path className="hero-wave-line" ref={heroWaveRef} />
+        </svg>
+        <div className="hero-overlay">
+          <div className="kicker accent">Step 01 · Setup</div>
+          <h1 className="setup-hero-title">
+            Build a left/right EQ profile
+            <br />
+            for your headphones.
+          </h1>
+          <p className="setup-hero-text">
+            This tool checks each ear separately and creates a personal stereo
+            balance profile. It takes about ~{estMinutes} minutes. Use wired
+            headphones if possible and sit in a quiet room.
+          </p>
+        </div>
       </div>
 
       <div className="warn-box">

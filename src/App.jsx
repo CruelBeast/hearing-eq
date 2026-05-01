@@ -107,6 +107,9 @@ export default function App() {
     setStepIdx(0);
     setThresholds(null);
     setProfileSeed(null);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   };
 
   return (
@@ -205,6 +208,10 @@ export default function App() {
           />
         )}
       </main>
+
+      <footer className="app-footer">
+        <div className="app-footer-inner">Copyright &copy; Ciprian M.</div>
+      </footer>
     </div>
   );
 }

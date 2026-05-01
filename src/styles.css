@@ -204,6 +204,21 @@ body {
     justify-content: center;
     padding: 32px 24px 80px;
 }
+
+.app-footer {
+    border-top: 1px solid var(--line-soft);
+    background: var(--bg);
+}
+.app-footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 24px 12px;
+    color: var(--fg-4);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
 .screen {
     width: 100%;
     max-width: 1180px;
@@ -268,16 +283,50 @@ h2 {
     overflow: hidden;
     padding: 36px 36px 44px;
 }
+.setup-hero {
+    min-height: 280px;
+}
 .hero canvas {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100% !important;
 }
+.hero-wave {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.hero-wave-line {
+    fill: none;
+    stroke: color-mix(in oklch, var(--accent) 80%, white 10%);
+    stroke-width: 1.45;
+    opacity: 0.72;
+}
+.hero-wave-line-soft {
+    stroke-width: 1.1;
+    opacity: 0.35;
+}
 .hero-overlay {
     position: relative;
     z-index: 1;
     max-width: 760px;
+}
+.setup-hero-title {
+    margin: 0;
+    font-size: clamp(36px, 6vw, 68px);
+    line-height: 0.98;
+    letter-spacing: 0;
+    text-wrap: balance;
+}
+.setup-hero-text {
+    margin: 18px 0 0;
+    max-width: 760px;
+    color: var(--fg-2);
+    font-size: clamp(16px, 1.35vw, 22px);
+    line-height: 1.55;
 }
 
 /* ── Panels ──────────────────────────────────────────────────────────── */
