@@ -8,7 +8,7 @@ export function ContactPage({ onBack }) {
     name: "",
     email: "",
     message: "",
-    company: "",
+    _gotcha: "",
   });
   const [status, setStatus] = useState("idle");
   const [statusText, setStatusText] = useState("");
@@ -36,7 +36,7 @@ export function ContactPage({ onBack }) {
         throw new Error(data.error || "Message could not be sent.");
       }
 
-      setForm({ name: "", email: "", message: "", company: "" });
+      setForm({ name: "", email: "", message: "", _gotcha: "" });
       setStatus("sent");
       setStatusText("Message sent. Thanks for reaching out.");
     } catch (error) {
@@ -110,11 +110,11 @@ export function ContactPage({ onBack }) {
             <span>Company</span>
             <input
               type="text"
-              name="company"
+              name="_gotcha"
               tabIndex="-1"
               autoComplete="off"
-              value={form.company}
-              onChange={updateField("company")}
+              value={form._gotcha}
+              onChange={updateField("_gotcha")}
             />
           </label>
 

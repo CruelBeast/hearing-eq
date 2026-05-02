@@ -36,9 +36,9 @@ export async function onRequestPost({ request, env }) {
   const name = clean(payload.name).slice(0, 120);
   const email = clean(payload.email).slice(0, 160);
   const message = clean(payload.message).slice(0, MAX_MESSAGE_LENGTH);
-  const company = clean(payload.company);
+  const gotcha = clean(payload._gotcha);
 
-  if (company) {
+  if (gotcha) {
     return json({ ok: true });
   }
 
@@ -50,7 +50,6 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Please enter a valid email address." }, { status: 400 });
   }
 
-  const sentAt = new Date().toISOString();
   const senderName = name || "Website visitor";
 
   const response = await fetch(env.FORMSPREE_ENDPOINT, {
@@ -63,8 +62,9 @@ export async function onRequestPost({ request, env }) {
       name: senderName,
       email,
       message,
-      sentAt,
       _subject: `EARMATCH contact from ${senderName}`,
+      ...(email ? { _replyto: email } : {}),
+      _gotcha: "",
     }),
   });
 

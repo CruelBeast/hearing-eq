@@ -72,6 +72,9 @@ Configure these Cloudflare Pages environment variables before deploying:
 The Formspree endpoint is only read inside the Pages Function, so the frontend
 does not include your destination email address.
 
+If valid messages land in Formspree spam, move a test message to Inbox in
+Formspree and keep the form endpoint restricted to your Cloudflare Pages domain.
+
 ## Stack
 
 Vite + React 18, plain CSS, Web Audio API, Cloudflare Pages Functions.
