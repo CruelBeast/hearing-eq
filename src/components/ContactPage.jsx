@@ -1,7 +1,9 @@
-// ContactPage.jsx — contact route backed by a Cloudflare Pages Function
+// ContactPage.jsx — contact route backed by Formspree
 
 import { useState } from "react";
 import { Icon } from "./icons.jsx";
+
+const FORMSPREE_ENDPOINT = import.meta.env.VITE_FORMSPREE_ENDPOINT || "";
 
 export function ContactPage({ onBack }) {
   const [form, setForm] = useState({
@@ -25,10 +27,26 @@ export function ContactPage({ onBack }) {
     setStatusText("");
 
     try {
-      const response = await fetch("/api/contact", {
+      if (!FORMSPREE_ENDPOINT) {
+        throw new Error("Contact form is not configured yet.");
+      }
+
+      const response = await fetch(FORMSPREE_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          name: form.name.trim() || "Website visitor",
+          email: form.email.trim(),
+          message: form.message.trim(),
+          _subject: `EARMATCH contact from ${
+            form.name.trim() || "Website visitor"
+          }`,
+          ...(form.email.trim() ? { _replyto: form.email.trim() } : {}),
+          _gotcha: form._gotcha,
+        }),
       });
 
       const data = await response.json().catch(() => ({}));

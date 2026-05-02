@@ -64,17 +64,15 @@ Other scripts:
 
 ## Contact Form
 
-The `/contact` page posts to a Cloudflare Pages Function at `/api/contact`.
-Configure these Cloudflare Pages environment variables before deploying:
+The `/contact` page can post directly to Formspree. Configure this Cloudflare
+Pages build environment variable before deploying:
 
-- `FORMSPREE_ENDPOINT` — your Formspree form endpoint, for example `https://formspree.io/f/xxxxabcd`
+- `VITE_FORMSPREE_ENDPOINT` — your Formspree form endpoint, for example `https://formspree.io/f/xxxxabcd`
 
-The Formspree endpoint is only read inside the Pages Function, so the frontend
-does not include your destination email address.
-
-If valid messages land in Formspree spam, move a test message to Inbox in
-Formspree and keep the form endpoint restricted to your Cloudflare Pages domain.
+The Formspree form ID will be visible in the frontend, which is normal for
+Formspree forms. Your destination email address is still configured inside
+Formspree and is not included in the frontend bundle.
 
 ## Stack
 
-Vite + React 18, plain CSS, Web Audio API, Cloudflare Pages Functions.
+Vite + React 18, plain CSS, Web Audio API.
