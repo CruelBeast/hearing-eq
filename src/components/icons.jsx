@@ -42,6 +42,37 @@ export const Icon = {
       <path d="M3 8h10M9 4l4 4-4 4" />
     </svg>
   ),
+  ArrowL: (p) => (
+    <svg
+      viewBox="0 0 16 16"
+      width="12"
+      height="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
+      <path d="M13 8H3M7 4 3 8l4 4" />
+    </svg>
+  ),
+  Mail: (p) => (
+    <svg
+      viewBox="0 0 16 16"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...p}
+    >
+      <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
+      <path d="m3.5 5 4.5 3.4L12.5 5" />
+    </svg>
+  ),
   Download: (p) => (
     <svg
       viewBox="0 0 16 16"

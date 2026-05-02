@@ -62,6 +62,16 @@ Other scripts:
 }
 ```
 
+## Contact Form
+
+The `/contact` page posts to a Cloudflare Pages Function at `/api/contact`.
+Configure these Cloudflare Pages environment variables before deploying:
+
+- `FORMSPREE_ENDPOINT` — your Formspree form endpoint, for example `https://formspree.io/f/xxxxabcd`
+
+The Formspree endpoint is only read inside the Pages Function, so the frontend
+does not include your destination email address.
+
 ## Stack
 
-Vite + React 18, plain CSS, Web Audio API. No backend.
+Vite + React 18, plain CSS, Web Audio API, Cloudflare Pages Functions.

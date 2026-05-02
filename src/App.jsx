@@ -11,6 +11,8 @@ import { StepBar } from "./components/StepBar.jsx";
 import { SetupStep } from "./components/SetupStep.jsx";
 import { ThresholdStep } from "./components/ThresholdStep.jsx";
 import { ProfileStep } from "./components/ProfileStep.jsx";
+import { ContactPage } from "./components/ContactPage.jsx";
+import { Icon } from "./components/icons.jsx";
 
 function thresholdsFromSavedPayload(payload) {
   const rows = payload?.frequencies ?? [];
@@ -64,6 +66,7 @@ function buildCustomPreset(freqs) {
 }
 
 export default function App() {
+  const [route, setRoute] = useState(() => window.location.pathname);
   const [stepIdx, setStepIdx] = useState(0);
   const [thresholds, setThresholds] = useState(null);
   const [profileSeed, setProfileSeed] = useState(null);
@@ -82,6 +85,22 @@ export default function App() {
   useEffect(() => {
     document.body.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigateTo = (path) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, "", path);
+    }
+    setRoute(path);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  };
 
   const handleSetupDone = () => {
     setStepIdx(1);
@@ -112,6 +131,8 @@ export default function App() {
     });
   };
 
+  const showContact = route === "/contact";
+
   return (
     <div className="app">
       <header className="topbar">
@@ -141,48 +162,75 @@ export default function App() {
         </div>
 
         {/* Step progress */}
-        <StepBar stepIdx={stepIdx} />
+        {showContact ? (
+          <div className="route-pill">contact</div>
+        ) : (
+          <StepBar stepIdx={stepIdx} />
+        )}
 
-        {/* Theme toggle */}
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-          {theme === "dark" ? (
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        <div className="topbar-actions">
+          {showContact ? (
+            <button
+              type="button"
+              className="topbar-link"
+              onClick={() => navigateTo("/")}
             >
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-            </svg>
+              <Icon.ArrowL />
+              App
+            </button>
           ) : (
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <button
+              type="button"
+              className="topbar-link"
+              onClick={() => navigateTo("/contact")}
             >
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
+              <Icon.Mail />
+              Contact
+            </button>
           )}
-        </button>
+
+          {/* Theme toggle */}
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            {theme === "dark" ? (
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       <main className="main">
-        {stepIdx === 0 && (
+        {showContact && <ContactPage onBack={() => navigateTo("/")} />}
+        {!showContact && stepIdx === 0 && (
           <SetupStep
             onDone={handleSetupDone}
             onOpenSaved={handleOpenSavedProfile}
@@ -192,13 +240,13 @@ export default function App() {
             onCustomFreqsChange={setCustomFreqs}
           />
         )}
-        {stepIdx === 1 && (
+        {!showContact && stepIdx === 1 && (
           <ThresholdStep
             onDone={handleThresholdDone}
             bandPreset={activeBandPreset}
           />
         )}
-        {stepIdx === 2 && thresholds && (
+        {!showContact && stepIdx === 2 && thresholds && (
           <ProfileStep
             key={profileSeed?.id ?? "measured-profile"}
             thresholds={thresholds}
@@ -210,7 +258,16 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <div className="app-footer-inner">Copyright &copy; Ciprian M.</div>
+        <div className="app-footer-inner">
+          <span>Copyright &copy; Ciprian M.</span>
+          <button
+            type="button"
+            className="footer-link"
+            onClick={() => navigateTo(showContact ? "/" : "/contact")}
+          >
+            {showContact ? "Back to app" : "Contact"}
+          </button>
+        </div>
       </footer>
     </div>
   );
