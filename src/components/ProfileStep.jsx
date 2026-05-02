@@ -24,26 +24,45 @@ function fmtDate(isoStr) {
   });
 }
 
-function payloadToTxt(data) {
-  const rows = data.frequencies.map((f) =>
-    [
-      String(f.frequencyHz).padStart(7),
-      f.leftThresholdDb.toFixed(1).padStart(11),
-      f.rightThresholdDb.toFixed(1).padStart(12),
-      f.differenceDb.toFixed(1).padStart(10),
-      f.leftCorrectionDb.toFixed(2).padStart(8),
-      f.rightCorrectionDb.toFixed(2).padStart(9),
-    ].join("  "),
+function formatApoFreq(hz) {
+  const value = Number(hz);
+  return Number.isInteger(value) ? String(value) : String(value);
+}
+
+function formatApoGain(db) {
+  const value = Number(db);
+  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+}
+
+function payloadToApoTxt(data) {
+  const q = "1.41";
+  const leftRows = data.frequencies.map(
+    (f) =>
+      `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
+        f.leftCorrectionDb + data.globalPreampDb,
+      )} dB Q ${q}`,
   );
+  const rightRows = data.frequencies.map(
+    (f) =>
+      `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
+        f.rightCorrectionDb + data.globalPreampDb,
+      )} dB Q ${q}`,
+  );
+
   return [
-    "# Hearing Balance Profile",
-    `# Generated: ${data.createdAt}`,
+    "# Equalizer APO - Stereo Hearing-EQ profile",
+    `# Generated ${data.createdAt}`,
     `# Strength: ${data.strengthLabel} (${(data.correctionStrength * 100).toFixed(0)}%)`,
-    `# Global preamp: ${data.globalPreampDb.toFixed(2)} dB`,
-    `# ${data.notes}`,
+    `# Global preamp: ${formatApoGain(data.globalPreampDb)} dB`,
+    "# Drop this file into  C:\\Program Files\\EqualizerAPO\\config\\",
+    "# then add  Include: hearing-eq.txt  to your active config.txt",
     "#",
-    "#  freq_hz  left_thresh  right_thresh  diff_db  left_eq  right_eq",
-    ...rows,
+    "Channel: L",
+    ...leftRows,
+    "",
+    "Channel: R",
+    ...rightRows,
+    "",
   ].join("\n");
 }
 
@@ -242,7 +261,7 @@ export function ProfileStep({
     const now = new Date();
     return {
       profileName: "EARMATCH Balance Profile",
-      createdAt: now.toISOString().split("T")[0],
+      createdAt: now.toISOString(),
       correctionStrength: STRENGTH[strengthKey].value,
       strengthLabel: STRENGTH[strengthKey].label,
       globalPreampDb: +globalPreamp.toFixed(2),
@@ -278,7 +297,7 @@ export function ProfileStep({
       );
     } else {
       triggerDownload(
-        payloadToTxt(entry.data),
+        payloadToApoTxt(entry.data),
         "text/plain",
         `earmatch-balance-${dateStr}.txt`,
       );
@@ -296,7 +315,7 @@ export function ProfileStep({
       );
     } else {
       triggerDownload(
-        payloadToTxt(payload),
+        payloadToApoTxt(payload),
         "text/plain",
         `earmatch-balance-${dateStr}.txt`,
       );
