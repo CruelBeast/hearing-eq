@@ -39,13 +39,13 @@ function payloadToApoTxt(data) {
   const leftRows = data.frequencies.map(
     (f) =>
       `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
-        f.leftCorrectionDb + data.globalPreampDb,
+        f.leftCorrectionDb,
       )} dB Q ${q}`,
   );
   const rightRows = data.frequencies.map(
     (f) =>
       `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
-        f.rightCorrectionDb + data.globalPreampDb,
+        f.rightCorrectionDb,
       )} dB Q ${q}`,
   );
 
@@ -57,11 +57,15 @@ function payloadToApoTxt(data) {
     "# Drop this file into  C:\\Program Files\\EqualizerAPO\\config\\",
     "# then add  Include: hearing-eq.txt  to your active config.txt",
     "#",
+    `Preamp: ${formatApoGain(data.globalPreampDb)} dB`,
+    "",
     "Channel: L",
     ...leftRows,
     "",
     "Channel: R",
     ...rightRows,
+    "",
+    "Channel: all",
     "",
   ].join("\n");
 }
