@@ -35,19 +35,14 @@ function formatApoGain(db) {
 }
 
 function payloadToApoTxt(data) {
-  const q = "1.41";
-  const leftRows = data.frequencies.map(
-    (f) =>
-      `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
-        f.leftCorrectionDb,
-      )} dB Q ${q}`,
-  );
-  const rightRows = data.frequencies.map(
-    (f) =>
-      `Filter: ON PK Fc ${formatApoFreq(f.frequencyHz)} Hz Gain ${formatApoGain(
-        f.rightCorrectionDb,
-      )} dB Q ${q}`,
-  );
+  const graphicEq = (side) =>
+    data.frequencies
+      .map((f) => {
+        const gain =
+          side === "left" ? f.leftCorrectionDb : f.rightCorrectionDb;
+        return `${formatApoFreq(f.frequencyHz)} ${formatApoGain(gain)}`;
+      })
+      .join("; ");
 
   return [
     "# Equalizer APO - Stereo Hearing-EQ profile",
@@ -60,12 +55,10 @@ function payloadToApoTxt(data) {
     `Preamp: ${formatApoGain(data.globalPreampDb)} dB`,
     "",
     "Channel: L",
-    ...leftRows,
+    `GraphicEQ: ${graphicEq("left")}`,
     "",
     "Channel: R",
-    ...rightRows,
-    "",
-    "Channel: all",
+    `GraphicEQ: ${graphicEq("right")}`,
     "",
   ].join("\n");
 }
