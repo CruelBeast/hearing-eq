@@ -43,14 +43,14 @@ export function CurveChart({ leftData, rightData, labels }) {
           <g key={v}>
             <line
               x1={PL} x2={W - PR} y1={yOf(v)} y2={yOf(v)}
-              stroke={v === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}
+              stroke={v === 0 ? 'var(--chart-grid-strong)' : 'var(--chart-grid)'}
               strokeWidth={v === 0 ? 1 : 0.5}
               strokeDasharray={v === 0 ? '' : '2 4'}
             />
             <text
               x={PL - 5} y={yOf(v) + 3.5}
               textAnchor="end"
-              fill="rgba(255,255,255,0.35)"
+              fill="var(--chart-label)"
               fontSize="9"
               fontFamily="JetBrains Mono, monospace"
             >
@@ -65,7 +65,7 @@ export function CurveChart({ leftData, rightData, labels }) {
             key={i}
             x={xOf(i)} y={H - 8}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.40)"
+            fill="var(--chart-label)"
             fontSize="9"
             fontFamily="JetBrains Mono, monospace"
           >
@@ -91,7 +91,7 @@ export function CurveChart({ leftData, rightData, labels }) {
 
         <text
           x="6" y={PT + 8}
-          fill="rgba(255,255,255,0.35)"
+          fill="var(--chart-label)"
           fontSize="9"
           fontFamily="JetBrains Mono, monospace"
         >

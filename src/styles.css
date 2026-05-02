@@ -14,6 +14,9 @@
     --accent-2: oklch(0.78 0.13 45);
     --accent-soft: oklch(0.84 0.18 145 / 0.14);
     --danger: oklch(0.72 0.16 28);
+    --chart-label: oklch(0.78 0.008 240);
+    --chart-grid: oklch(0.96 0.005 240 / 0.07);
+    --chart-grid-strong: oklch(0.96 0.005 240 / 0.2);
 
     --mono:
         "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
@@ -34,6 +37,9 @@ body[data-theme="light"] {
     --accent: oklch(0.62 0.18 145);
     --accent-2: oklch(0.62 0.16 45);
     --accent-soft: oklch(0.62 0.18 145 / 0.12);
+    --chart-label: oklch(0.38 0.012 240);
+    --chart-grid: oklch(0.45 0.012 240 / 0.12);
+    --chart-grid-strong: oklch(0.36 0.012 240 / 0.28);
 }
 
 * {
