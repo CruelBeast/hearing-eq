@@ -13,6 +13,7 @@ import { ThresholdStep } from "./components/ThresholdStep.jsx";
 import { ProfileStep } from "./components/ProfileStep.jsx";
 import { ContactPage } from "./components/ContactPage.jsx";
 import { Icon } from "./components/icons.jsx";
+import { computeCorrection } from "./lib/dsp.js";
 
 function thresholdsFromSavedPayload(payload) {
   const rows = payload?.frequencies ?? [];
@@ -113,11 +114,30 @@ export default function App() {
   const handleOpenSavedProfile = (entry) => {
     const mappedThresholds = thresholdsFromSavedPayload(entry?.data);
     if (!mappedThresholds) return;
+    const strengthKey = strengthKeyFromSavedPayload(entry.data);
+    const baseCorrection = computeCorrection(mappedThresholds, strengthKey);
+    const savedRows = entry.data?.frequencies ?? [];
+    const importedFinetuning = baseCorrection.map((base, i) => {
+      const row = savedRows[i] ?? {};
+      const left = Number(row.leftCorrectionDb);
+      const right = Number(row.rightCorrectionDb);
+      const fromLeft = Number.isFinite(left)
+        ? (base.leftCorrDb - left) * 2
+        : null;
+      const fromRight = Number.isFinite(right)
+        ? (right - base.rightCorrDb) * 2
+        : null;
+      const values = [fromLeft, fromRight].filter(Number.isFinite);
+      return values.length > 0
+        ? values.reduce((sum, value) => sum + value, 0) / values.length
+        : 0;
+    });
 
     setThresholds(mappedThresholds);
     setProfileSeed({
       id: entry.id,
-      strengthKey: strengthKeyFromSavedPayload(entry.data),
+      strengthKey,
+      finetuning: importedFinetuning,
       fromSaved: true,
     });
     setStepIdx(2);
@@ -251,6 +271,7 @@ export default function App() {
             key={profileSeed?.id ?? "measured-profile"}
             thresholds={thresholds}
             initialStrengthKey={profileSeed?.strengthKey ?? "mild"}
+            initialFinetuning={profileSeed?.finetuning}
             autoSaveOnMount={!profileSeed?.fromSaved}
             onRestart={handleRestart}
           />

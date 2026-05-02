@@ -34,9 +34,21 @@ function formatApoGain(db) {
   return Number.isFinite(value) ? value.toFixed(2) : "0.00";
 }
 
-function payloadToApoTxt(data) {
+function payloadToPeaceTxt(data) {
+  const withPeaceAnchor = (points) => {
+    if (points.some((f) => Number(f.frequencyHz) === 0)) return points;
+    return [
+      {
+        frequencyHz: 0,
+        leftCorrectionDb: 0,
+        rightCorrectionDb: 0,
+      },
+      ...points,
+    ];
+  };
+
   const graphicEq = (side) =>
-    data.frequencies
+    withPeaceAnchor(data.frequencies)
       .map((f) => {
         const gain =
           side === "left" ? f.leftCorrectionDb : f.rightCorrectionDb;
@@ -45,12 +57,13 @@ function payloadToApoTxt(data) {
       .join("; ");
 
   return [
-    "# Equalizer APO - Stereo Hearing-EQ profile",
+    "# Peace / Equalizer APO - Stereo Hearing-EQ profile",
     `# Generated ${data.createdAt}`,
     `# Strength: ${data.strengthLabel} (${(data.correctionStrength * 100).toFixed(0)}%)`,
     `# Global preamp: ${formatApoGain(data.globalPreampDb)} dB`,
     "# Drop this file into  C:\\Program Files\\EqualizerAPO\\config\\",
     "# then add  Include: hearing-eq.txt  to your active config.txt",
+    "# Peace import note: the leading 0 Hz / 0 dB point is a harmless parser anchor.",
     "#",
     `Preamp: ${formatApoGain(data.globalPreampDb)} dB`,
     "",
@@ -59,6 +72,37 @@ function payloadToApoTxt(data) {
     "",
     "Channel: R",
     `GraphicEQ: ${graphicEq("right")}`,
+    "",
+  ].join("\n");
+}
+
+function payloadToApoParametricTxt(data) {
+  const q = "1.41";
+  const filterRows = (side) =>
+    data.frequencies.map((f) => {
+      const gain = side === "left" ? f.leftCorrectionDb : f.rightCorrectionDb;
+      return `Filter: ON PK Fc ${formatApoFreq(
+        f.frequencyHz,
+      )} Hz Gain ${formatApoGain(gain)} dB Q ${q}`;
+    });
+
+  return [
+    "# Equalizer APO - Stereo Hearing-EQ profile",
+    `# Generated ${data.createdAt}`,
+    `# Strength: ${data.strengthLabel} (${(data.correctionStrength * 100).toFixed(0)}%)`,
+    `# Global preamp: ${formatApoGain(data.globalPreampDb)} dB`,
+    "# Drop this file into  C:\\Program Files\\EqualizerAPO\\config\\",
+    "# then add  Include: hearing-eq-apo.txt  to your active config.txt",
+    "#",
+    `Preamp: ${formatApoGain(data.globalPreampDb)} dB`,
+    "",
+    "Channel: L",
+    ...filterRows("left"),
+    "",
+    "Channel: R",
+    ...filterRows("right"),
+    "",
+    "Channel: all",
     "",
   ].join("\n");
 }
@@ -77,11 +121,14 @@ export function ProfileStep({
   thresholds,
   onRestart,
   initialStrengthKey = "mild",
+  initialFinetuning = null,
   autoSaveOnMount = true,
 }) {
   const [strengthKey, setStrengthKey] = useState(initialStrengthKey);
   const [finetuning, setFinetuning] = useState(() =>
-    new Array(thresholds.length).fill(0),
+    Array.isArray(initialFinetuning) && initialFinetuning.length === thresholds.length
+      ? initialFinetuning
+      : new Array(thresholds.length).fill(0),
   );
   const [ftOpen, setFtOpen] = useState(false);
   const [ftBandIdx, setFtBandIdx] = useState(0);
@@ -292,11 +339,17 @@ export function ProfileStep({
         "application/json",
         `earmatch-balance-${dateStr}.json`,
       );
+    } else if (fmt === "apo") {
+      triggerDownload(
+        payloadToApoParametricTxt(entry.data),
+        "text/plain",
+        `earmatch-apo-${dateStr}.txt`,
+      );
     } else {
       triggerDownload(
-        payloadToApoTxt(entry.data),
+        payloadToPeaceTxt(entry.data),
         "text/plain",
-        `earmatch-balance-${dateStr}.txt`,
+        `earmatch-peace-${dateStr}.txt`,
       );
     }
   }
@@ -310,11 +363,17 @@ export function ProfileStep({
         "application/json",
         `earmatch-balance-${dateStr}.json`,
       );
+    } else if (fmt === "apo") {
+      triggerDownload(
+        payloadToApoParametricTxt(payload),
+        "text/plain",
+        `earmatch-apo-${dateStr}.txt`,
+      );
     } else {
       triggerDownload(
-        payloadToApoTxt(payload),
+        payloadToPeaceTxt(payload),
         "text/plain",
-        `earmatch-balance-${dateStr}.txt`,
+        `earmatch-peace-${dateStr}.txt`,
       );
     }
   };
@@ -709,18 +768,24 @@ export function ProfileStep({
 
         {/* File export */}
         <p className="panel-body" style={{ margin: "10px 0 8px" }}>
-          Export files: <strong>.txt</strong> for EQ apps (Equalizer APO, eqMac,
-          etc.) and <strong>.json</strong> for app backup/import.
+          Export a Peace-friendly TXT, a plain Equalizer APO TXT, or a JSON
+          backup that can be imported back into this app.
         </p>
         <div className="export-row">
           <button
             className="cta secondary"
-            onClick={() => exportProfile("txt")}
+            onClick={() => exportProfile("peace")}
           >
-            <Icon.Download /> Export .txt
+            <Icon.Download /> Peace .txt
+          </button>
+          <button
+            className="cta secondary"
+            onClick={() => exportProfile("apo")}
+          >
+            <Icon.Download /> APO .txt
           </button>
           <button className="cta" onClick={() => exportProfile("json")}>
-            <Icon.Download /> Export .json
+            <Icon.Download /> Backup .json
           </button>
         </div>
 
@@ -744,15 +809,22 @@ export function ProfileStep({
                 <div className="saved-entry-actions">
                   <button
                     className="saved-dl-btn"
-                    onClick={() => downloadSaved(entry, "txt")}
-                    title="Download .txt"
+                    onClick={() => downloadSaved(entry, "peace")}
+                    title="Download Peace .txt"
                   >
-                    <Icon.Download /> .txt
+                    <Icon.Download /> Peace
+                  </button>
+                  <button
+                    className="saved-dl-btn"
+                    onClick={() => downloadSaved(entry, "apo")}
+                    title="Download Equalizer APO .txt"
+                  >
+                    <Icon.Download /> APO
                   </button>
                   <button
                     className="saved-dl-btn"
                     onClick={() => downloadSaved(entry, "json")}
-                    title="Download .json"
+                    title="Download backup .json"
                   >
                     <Icon.Download /> .json
                   </button>

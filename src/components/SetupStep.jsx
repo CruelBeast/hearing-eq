@@ -8,7 +8,7 @@ import {
   freqLabelFromHz,
 } from "../constants.js";
 import { playDemo } from "../audio-engine.js";
-import { loadProfiles } from "../lib/storage.js";
+import { loadProfiles, saveProfile } from "../lib/storage.js";
 import { Icon } from "./icons.jsx";
 
 function fmtDateTime(iso) {
@@ -51,7 +51,9 @@ export function SetupStep({
 }) {
   const [quietConfirmed, setQuietConfirmed] = useState(false);
   const [volPlaying, setVolPlaying] = useState(false);
-  const savedProfiles = useMemo(() => loadProfiles(), []);
+  const [savedProfiles, setSavedProfiles] = useState(() => loadProfiles());
+  const [importStatus, setImportStatus] = useState("");
+  const importInputRef = useRef(null);
   const volRef = useRef(null);
   const heroSvgRef = useRef(null);
   const heroWaveRef = useRef(null);
@@ -156,6 +158,75 @@ export function SetupStep({
     volRef.current = null;
     setVolPlaying(false);
     onOpenSaved(entry);
+  }
+
+  function normalizeImportedProfile(payload) {
+    const rows = payload?.frequencies;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("That JSON does not contain profile frequencies.");
+    }
+
+    const frequencies = rows.map((row) => {
+      const frequencyHz = Number(row.frequencyHz);
+      const leftThresholdDb = Number(row.leftThresholdDb);
+      const rightThresholdDb = Number(row.rightThresholdDb);
+      const differenceDb = Number(row.differenceDb);
+      const leftCorrectionDb = Number(row.leftCorrectionDb);
+      const rightCorrectionDb = Number(row.rightCorrectionDb);
+
+      if (
+        !Number.isFinite(frequencyHz) ||
+        !Number.isFinite(leftThresholdDb) ||
+        !Number.isFinite(rightThresholdDb)
+      ) {
+        throw new Error("That JSON is missing required threshold values.");
+      }
+
+      return {
+        frequencyHz,
+        leftThresholdDb,
+        rightThresholdDb,
+        differenceDb: Number.isFinite(differenceDb)
+          ? differenceDb
+          : rightThresholdDb - leftThresholdDb,
+        leftCorrectionDb: Number.isFinite(leftCorrectionDb)
+          ? leftCorrectionDb
+          : 0,
+        rightCorrectionDb: Number.isFinite(rightCorrectionDb)
+          ? rightCorrectionDb
+          : 0,
+      };
+    });
+
+    return {
+      profileName: payload.profileName || "Imported EARMATCH Balance Profile",
+      createdAt: payload.createdAt || new Date().toISOString(),
+      correctionStrength: Number(payload.correctionStrength) || 0.65,
+      strengthLabel: payload.strengthLabel || "Normal",
+      globalPreampDb: Number(payload.globalPreampDb) || 0,
+      notes:
+        payload.notes ||
+        "Relative left/right balance profile. Not a medical audiogram.",
+      frequencies,
+    };
+  }
+
+  async function handleImportJson(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const payload = normalizeImportedProfile(JSON.parse(await file.text()));
+      const id = saveProfile(payload);
+      const nextProfiles = loadProfiles();
+      setSavedProfiles(nextProfiles);
+      setImportStatus("Imported JSON backup.");
+      const imported = nextProfiles.find((entry) => entry.id === id);
+      if (imported) openSavedProfile(imported);
+    } catch (error) {
+      setImportStatus(error.message || "Could not import that JSON file.");
+    }
   }
 
   function clampCount(n) {
@@ -444,43 +515,62 @@ export function SetupStep({
         </p>
       </div>
 
-      {savedProfiles.length > 0 && onOpenSaved && (
+      {onOpenSaved && (
         <div className="panel">
           <div className="panel-h">
             <div className="panel-num">03</div>
-            <div className="panel-title">Open saved profile</div>
+            <div className="panel-title">Open or import profile</div>
           </div>
           <p className="panel-body">
-            Already ran the test on this device? Open any saved profile to
-            fine-tune and export without repeating the ear test.
+            Already ran the test? Open a saved browser profile or import a JSON
+            backup to fine-tune and export without repeating the ear test.
           </p>
-          <div className="saved-profiles" style={{ marginTop: 10 }}>
-            <div className="saved-profiles-h">
-              Saved in this browser &mdash; {savedProfiles.length}{" "}
-              {savedProfiles.length === 1 ? "profile" : "profiles"}
-            </div>
-            {savedProfiles.map((entry) => (
-              <div key={entry.id} className="saved-entry">
-                <div className="saved-entry-info">
-                  <span className="saved-entry-date">
-                    {fmtDateTime(entry.savedAt)}
-                  </span>
-                  <span className="saved-entry-strength">
-                    {entry.strengthLabel}
-                  </span>
-                </div>
-                <div className="saved-entry-actions">
-                  <button
-                    className="saved-dl-btn"
-                    onClick={() => openSavedProfile(entry)}
-                    title="Open this saved profile"
-                  >
-                    Open <Icon.ArrowR />
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="import-row">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportJson}
+              className="sr-only-file"
+            />
+            <button
+              type="button"
+              className="cta secondary"
+              onClick={() => importInputRef.current?.click()}
+            >
+              <Icon.Download /> Import JSON backup
+            </button>
+            {importStatus && <span className="hint">{importStatus}</span>}
           </div>
+          {savedProfiles.length > 0 && (
+            <div className="saved-profiles" style={{ marginTop: 10 }}>
+              <div className="saved-profiles-h">
+                Saved in this browser &mdash; {savedProfiles.length}{" "}
+                {savedProfiles.length === 1 ? "profile" : "profiles"}
+              </div>
+              {savedProfiles.map((entry) => (
+                <div key={entry.id} className="saved-entry">
+                  <div className="saved-entry-info">
+                    <span className="saved-entry-date">
+                      {fmtDateTime(entry.savedAt)}
+                    </span>
+                    <span className="saved-entry-strength">
+                      {entry.strengthLabel}
+                    </span>
+                  </div>
+                  <div className="saved-entry-actions">
+                    <button
+                      className="saved-dl-btn"
+                      onClick={() => openSavedProfile(entry)}
+                      title="Open this saved profile"
+                    >
+                      Open <Icon.ArrowR />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

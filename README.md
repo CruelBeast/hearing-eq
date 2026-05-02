@@ -10,7 +10,7 @@ The app walks you through three steps:
 
 2. **Ear Test** — for each of 8 ISO-ish frequency bands (125 Hz – 8 kHz), a pure tone plays in one ear at a time. The volume starts very quietly and rises gradually. You press "I Can Hear It" the moment you notice the tone. Each ear is measured twice per frequency (16 measurements per ear, 32 total). The two readings are averaged.
 
-3. **Profile** — the app computes `differenceDb = rightThreshold − leftThreshold` for each band. Correction is applied by reducing the better-hearing channel (cuts over boosts). Three correction strengths are available: Mild (50%), Normal (65%), and Strong (80%). An optional centre-balance fine-tuning step lets you nudge each band further at comfortable listening volume. Before/after preview, then export as `.json` or `.txt`.
+3. **Profile** — the app computes `differenceDb = rightThreshold − leftThreshold` for each band. Correction is applied by reducing the better-hearing channel (cuts over boosts). Three correction strengths are available: Mild (50%), Normal (65%), and Strong (80%). An optional centre-balance fine-tuning step lets you nudge each band further at comfortable listening volume. Before/after preview, then export for Peace, plain Equalizer APO, or JSON backup.
 
 All audio is real Web Audio — per-ear isolation via `ChannelMerger`, peaking biquads for the EQ chain.
 
@@ -40,6 +40,12 @@ Other scripts:
 - Start with **Mild** correction (50%) — it is the safest default. Only increase strength if the mild correction feels insufficient after living with it for a few days.
 
 ## Exported profile format
+
+The app can export:
+
+- **Peace .txt** — `GraphicEQ` format intended for Peter's Equalizer APO Configuration Extension.
+- **APO .txt** — plain Equalizer APO parametric `Filter: ON PK ...` commands.
+- **Backup .json** — app backup that can be imported again from the setup screen.
 
 ```json
 {
