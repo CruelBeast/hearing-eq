@@ -1,7 +1,7 @@
 // CurveChart.jsx — SVG correction curve chart
 
 export function CurveChart({ leftData, rightData, labels }) {
-  const W = 720, H = 220, PL = 40, PR = 12, PT = 16, PB = 28;
+  const W = 720, H = 220, PL = 46, PR = 12, PT = 24, PB = 28;
   const iW = W - PL - PR;
   const iH = H - PT - PB;
   const N = labels.length;
@@ -90,12 +90,13 @@ export function CurveChart({ leftData, rightData, labels }) {
         ))}
 
         <text
-          x="6" y={PT + 8}
+          x={PL - 6} y="11"
+          textAnchor="end"
           fill="var(--chart-label)"
           fontSize="9"
           fontFamily="JetBrains Mono, monospace"
         >
-          dB
+          dB gain
         </text>
       </svg>
     </div>
