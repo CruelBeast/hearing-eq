@@ -158,11 +158,30 @@ export default function App() {
 
   const showContact = route === "/contact";
 
+  // Clicking the brand returns to the start page from anywhere. Measurements
+  // taken during the test are not stored yet, so that step asks first.
+  const goHome = () => {
+    if (!showContact && stepIdx === 1) {
+      const proceed = window.confirm(
+        "Leave the test and return to the start? Measurements taken so far will be lost.",
+      );
+      if (!proceed) return;
+    }
+    if (showContact) navigateTo("/");
+    handleRestart();
+  };
+
   return (
     <div className="app">
       <header className="topbar">
-        {/* Brand */}
-        <div className="brand">
+        {/* Brand — doubles as "back to start" */}
+        <button
+          type="button"
+          className="brand"
+          onClick={goHome}
+          aria-label="EARMATCH — back to start"
+          title="Back to start"
+        >
           <div className="brand-mark">
             <svg
               viewBox="0 0 24 24"
@@ -184,7 +203,7 @@ export default function App() {
             </div>
             <div className="brand-tag">hearing balance profile</div>
           </div>
-        </div>
+        </button>
 
         {/* Step progress */}
         {showContact ? (

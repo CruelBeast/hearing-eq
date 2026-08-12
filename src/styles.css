@@ -1,5 +1,24 @@
 /* styles.css — hearing-eq dark studio aesthetic */
 
+/* Metric-matched fallbacks: the webfonts load asynchronously, and these keep
+   the first paint the same size as the final one so text does not reflow. */
+@font-face {
+    font-family: "Inter Fallback";
+    src: local("Arial");
+    size-adjust: 107.12%;
+    ascent-override: 90.44%;
+    descent-override: 22.52%;
+    line-gap-override: 0%;
+}
+@font-face {
+    font-family: "JetBrains Mono Fallback";
+    src: local("Courier New");
+    size-adjust: 133.7%;
+    ascent-override: 76.29%;
+    descent-override: 21.79%;
+    line-gap-override: 0%;
+}
+
 :root {
     --bg: oklch(0.16 0.008 240);
     --bg-2: oklch(0.2 0.01 240);
@@ -8,9 +27,12 @@
     --line-soft: oklch(0.26 0.01 240);
     --fg: oklch(0.96 0.005 240);
     --fg-2: oklch(0.78 0.008 240);
-    --fg-3: oklch(0.58 0.01 240);
-    --fg-4: oklch(0.42 0.012 240);
+    --fg-3: oklch(0.7 0.01 240);
+    --fg-4: oklch(0.63 0.012 240);
     --accent: oklch(0.84 0.18 145);
+    /* Accent used as text: same as --accent on dark, darkened in light theme
+       so small labels clear the 4.5:1 contrast requirement. */
+    --accent-ink: oklch(0.84 0.18 145);
     --accent-2: oklch(0.78 0.13 45);
     --accent-soft: oklch(0.84 0.18 145 / 0.14);
     --danger: oklch(0.72 0.16 28);
@@ -19,9 +41,11 @@
     --chart-grid-strong: oklch(0.96 0.005 240 / 0.2);
 
     --mono:
-        "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
-        monospace;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace,
+        SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:
+        "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, system-ui,
+        sans-serif;
 }
 
 body[data-theme="light"] {
@@ -32,11 +56,13 @@ body[data-theme="light"] {
     --line-soft: oklch(0.92 0.005 240);
     --fg: oklch(0.18 0.01 240);
     --fg-2: oklch(0.32 0.01 240);
-    --fg-3: oklch(0.5 0.01 240);
-    --fg-4: oklch(0.62 0.01 240);
+    --fg-3: oklch(0.45 0.01 240);
+    --fg-4: oklch(0.5 0.012 240);
     --accent: oklch(0.62 0.18 145);
+    --accent-ink: oklch(0.46 0.13 145);
     --accent-2: oklch(0.62 0.16 45);
     --accent-soft: oklch(0.62 0.18 145 / 0.12);
+    --danger: oklch(0.52 0.19 28);
     --chart-label: oklch(0.38 0.012 240);
     --chart-grid: oklch(0.45 0.012 240 / 0.12);
     --chart-grid-strong: oklch(0.36 0.012 240 / 0.28);
@@ -85,8 +111,34 @@ body {
     align-items: center;
     gap: 10px;
     color: var(--fg);
+    /* It is a button ("back to start"), so strip the native chrome */
+    appearance: none;
+    border: 0;
+    background: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+    /* Keep the hit area on the logo itself, not the whole grid column */
+    justify-self: start;
+    width: fit-content;
+}
+.brand:hover .brand-mark {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+.brand:hover .brand-tag {
+    color: var(--fg-2);
+}
+.brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
 }
 .brand-mark {
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
     width: 32px;
     height: 32px;
     border: 1px solid var(--line);
@@ -94,7 +146,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .brand-name {
     font-family: var(--mono);
@@ -103,7 +155,7 @@ body {
     letter-spacing: 0.06em;
 }
 .brand-dot {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .brand-tag {
     font-family: var(--mono);
@@ -152,13 +204,13 @@ body {
     background: var(--bg-2);
 }
 .step-active .step-num {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .step-done {
     color: var(--fg-2);
 }
 .step-done .step-num {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 .topbar-meta {
@@ -244,7 +296,7 @@ body {
     justify-self: center;
     border: 1px solid var(--line);
     background: var(--bg-2);
-    color: var(--accent);
+    color: var(--accent-ink);
     border-radius: 6px;
     padding: 6px 12px;
     font-family: var(--mono);
@@ -302,10 +354,10 @@ body {
     margin-bottom: 8px;
 }
 .kicker.accent {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .accent {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 h1 {
@@ -336,6 +388,18 @@ h2 {
 }
 .screen-h {
     padding: 4px 0 4px;
+}
+/* Kicker on the left, a compact action (e.g. "Back to start") on the right */
+.screen-h-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.ghost-sm {
+    padding: 7px 10px;
+    font-size: 10.5px;
 }
 
 /* ── Hero (intro) ─────────────────────────────────────────────────────── */
@@ -415,7 +479,7 @@ h2 {
 .panel-num {
     font-family: var(--mono);
     font-size: 10px;
-    color: var(--accent);
+    color: var(--accent-ink);
     letter-spacing: 0.1em;
     padding: 3px 7px;
     border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
@@ -489,14 +553,14 @@ h2 {
 }
 .ear-btn.is-playing .ear-side {
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--accent-ink);
     border-color: var(--accent);
 }
 .ear-btn.is-done {
     border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
 }
 .ear-btn.is-done .ear-side {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .ear-btn .ear-label {
     flex: 1;
@@ -593,7 +657,7 @@ h2 {
 }
 .hint em {
     font-style: normal;
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 /* CTA buttons */
@@ -726,7 +790,7 @@ h2 {
 .match-num {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-ink);
     letter-spacing: 0.1em;
     width: 24px;
     height: 24px;
@@ -888,10 +952,10 @@ h2 {
 .big-play.is-on {
     border-color: var(--accent);
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .big-play.accent {
-    color: var(--accent);
+    color: var(--accent-ink);
     border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
 }
 
@@ -1064,7 +1128,7 @@ h2 {
     letter-spacing: 0.06em;
 }
 .ear-toggle button.is-on .et-side {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 .band-strip {
@@ -1107,7 +1171,7 @@ h2 {
 }
 .band-cell .band-val {
     font-size: 9.5px;
-    color: var(--accent);
+    color: var(--accent-ink);
     margin-top: 2px;
     font-family: var(--mono);
     min-height: 12px;
@@ -1126,7 +1190,7 @@ h2 {
     border-color: var(--accent);
 }
 .band-cell.band-active .band-label {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .band-cell.band-done .band-label {
     color: var(--fg-2);
@@ -1182,7 +1246,7 @@ h2 {
     gap: 4px;
 }
 .ms-method {
-    color: var(--accent);
+    color: var(--accent-ink);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-size: 10px;
@@ -1227,7 +1291,7 @@ h2 {
 }
 .ms-method-opt.is-on {
     background: color-mix(in oklch, var(--accent) 16%, transparent);
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 /* slider method */
@@ -1256,7 +1320,7 @@ h2 {
 }
 .ab-instruct em {
     font-style: normal;
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .ab-row {
     display: grid;
@@ -1292,7 +1356,7 @@ h2 {
     color: var(--fg);
 }
 .ab-btn.accent .ab-lbl {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .ab-sub {
     font-size: 13px;
@@ -1333,7 +1397,7 @@ h2 {
 .ab-readout {
     font-family: var(--mono);
     font-size: 14px;
-    color: var(--accent);
+    color: var(--accent-ink);
     text-align: center;
     padding: 0 12px;
 }
@@ -1348,7 +1412,7 @@ h2 {
 .threshold-readout {
     font-family: var(--mono);
     font-size: 56px;
-    color: var(--accent);
+    color: var(--accent-ink);
     font-weight: 500;
     letter-spacing: -0.02em;
     display: flex;
@@ -1384,7 +1448,7 @@ h2 {
 .threshold-controls button:active {
     background: var(--accent-soft);
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 /* ── Results step ────────────────────────────────────────────────────── */
@@ -1584,7 +1648,7 @@ h2 {
     color: var(--fg);
 }
 .rt-v.pos {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .rt-v.neg {
     color: var(--accent-2);
@@ -1714,7 +1778,7 @@ h2 {
     font-weight: 600;
 }
 .head-centered {
-    color: var(--accent);
+    color: var(--accent-ink);
     letter-spacing: 0.18em;
     text-transform: uppercase;
 }
@@ -1740,7 +1804,7 @@ h2 {
 }
 .bs-val {
     font-size: 22px;
-    color: var(--accent);
+    color: var(--accent-ink);
     letter-spacing: 0;
     text-transform: none;
     font-weight: 500;
@@ -1817,7 +1881,7 @@ h2 {
     border-color: var(--fg-3);
 }
 .bs-fine .bs-zero {
-    color: var(--accent);
+    color: var(--accent-ink);
     border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
 }
 
@@ -2058,7 +2122,7 @@ h2 {
     margin: 0;
 }
 .contact-status.is-sent {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .contact-status.is-error {
     color: var(--danger);
@@ -2120,7 +2184,7 @@ h2 {
 .vol-ok-hint {
     margin: 10px 0 0;
     font-size: 13px;
-    color: var(--accent);
+    color: var(--accent-ink);
     line-height: 1.5;
 }
 
@@ -2231,7 +2295,7 @@ h2 {
 .custom-freq-hint {
     margin: 8px 0 0;
     font-size: 13px;
-    color: var(--accent);
+    color: var(--accent-ink);
     line-height: 1.5;
 }
 .custom-freq-error {
@@ -2315,7 +2379,7 @@ h2 {
 .ear-badge.ear-left {
     border-color: color-mix(in oklch, var(--accent) 50%, var(--line));
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .ear-badge.ear-right {
     border-color: color-mix(in oklch, var(--accent-2) 50%, var(--line));
@@ -2373,7 +2437,7 @@ h2 {
     text-transform: uppercase;
 }
 .vol-center {
-    color: var(--accent);
+    color: var(--accent-ink);
     font-size: 12px;
     letter-spacing: 0.04em;
     text-transform: none;
@@ -2418,7 +2482,7 @@ h2 {
     gap: 10px;
     font-family: var(--mono);
     font-size: 14px;
-    color: var(--accent);
+    color: var(--accent-ink);
     letter-spacing: 0.04em;
 }
 
@@ -2478,7 +2542,7 @@ h2 {
 .preview-ref-btn.is-on {
     background: var(--accent-soft);
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 
 /* Band progress dots */
@@ -2522,7 +2586,7 @@ h2 {
     letter-spacing: 0.06em;
 }
 .bdot-item.active .bdot-label {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .bdot-item.done .bdot-label {
     color: var(--fg-3);
@@ -2578,7 +2642,7 @@ h2 {
     font-style: italic;
 }
 .tt-weaker-balanced {
-    color: var(--accent);
+    color: var(--accent-ink);
     font-style: normal;
 }
 .tt-weaker-left {
@@ -2627,7 +2691,7 @@ h2 {
     color: var(--fg);
 }
 .strength-btn.is-on .stn-name {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .stn-desc {
     font-family: var(--mono);
@@ -2651,7 +2715,7 @@ h2 {
     color: var(--fg);
 }
 .finetune-toggle:hover .panel-title {
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 .finetune-toggle-text {
     flex: 1;
@@ -2772,7 +2836,7 @@ h2 {
 .storage-notice svg {
     flex-shrink: 0;
     margin-top: 2px;
-    color: var(--accent);
+    color: var(--accent-ink);
 }
 body[data-theme="light"] .storage-notice {
     border-color: oklch(0.62 0.18 145 / 0.25);

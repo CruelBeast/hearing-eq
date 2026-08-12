@@ -613,6 +613,7 @@ export function SetupStep({
               accept="application/json,.json"
               onChange={handleImportJson}
               className="sr-only-file"
+              aria-label="Import a JSON profile backup"
             />
             <button
               type="button"

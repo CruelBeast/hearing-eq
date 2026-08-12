@@ -451,7 +451,12 @@ export function ProfileStep({
   return (
     <div className="screen profile">
       <div className="screen-h">
-        <div className="kicker accent">Step 03 · Profile</div>
+        <div className="screen-h-top">
+          <div className="kicker accent">Step 03 · Profile</div>
+          <button className="ghost ghost-sm" onClick={onRestart}>
+            <Icon.Restart /> Back to start
+          </button>
+        </div>
         <h2>Your left/right balance profile.</h2>
         <p className="lede">
           {resultState === "large" ? (

@@ -7,13 +7,32 @@
             content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <title>EARMATCH · Hearing Balance Profile</title>
+        <meta
+            name="description"
+            content="EARMATCH measures each ear separately with pure tones and builds a personal left/right balance EQ profile for your headphones. Runs entirely in your browser — no account, no upload."
+        />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <!-- Fonts are loaded without blocking the first render; the local
+             fallback metrics in styles.css keep the swap from shifting text. -->
         <link
-            rel="stylesheet"
+            rel="preload"
+            as="style"
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         />
+        <link
+            rel="stylesheet"
+            media="print"
+            onload="this.media='all'"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        />
+        <noscript>
+            <link
+                rel="stylesheet"
+                href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+            />
+        </noscript>
     </head>
     <body data-theme="dark">
         <div id="root"></div>
