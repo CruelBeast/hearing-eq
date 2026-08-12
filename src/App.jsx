@@ -88,7 +88,7 @@ export default function App() {
   const [customFreqs, setCustomFreqs] = useState(() => [
     ...TEST_BAND_PRESETS[DEFAULT_BAND_PRESET].freqs,
   ]);
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState("dark");
 
   const activeBandPreset =
     bandPresetId === "custom"
