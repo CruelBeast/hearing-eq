@@ -1,7 +1,7 @@
 // ProfileStep.jsx — correction profile, fine-tuning, preview, and export (Step 3)
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { playBalanceTone, playDemo, playToneSweep } from "../audio-engine.js";
+import { playBalanceTone, playToneSweep } from "../audio-engine.js";
 import {
   STRENGTH,
   BALANCE_THRESHOLD_DB,
@@ -22,6 +22,38 @@ function fmtDate(isoStr) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+// Preview sweep: one full low->high->low cycle at 1.0x speed.
+const SWEEP_BASE_SEC = 9.2;
+const SWEEP_SPEED_MIN = 0.3;
+const SWEEP_SPEED_MAX = 3;
+
+// Preview frequency scale (also the range of the single-tone picker)
+const SWEEP_MIN_HZ = 80;
+const SWEEP_MAX_HZ = 14000;
+const TONE_STEPS = 1000; // slider resolution across the log scale
+
+function fmtSweepHz(hz) {
+  if (!Number.isFinite(hz)) return "--";
+  return hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`;
+}
+
+// Fractional position (0-1) of a frequency on the log scale, and back
+function hzToPos(hz) {
+  const p =
+    (Math.log(hz) - Math.log(SWEEP_MIN_HZ)) /
+    (Math.log(SWEEP_MAX_HZ) - Math.log(SWEEP_MIN_HZ));
+  return clamp(p, 0, 1);
+}
+
+function posToHz(pos) {
+  const hz = Math.exp(
+    Math.log(SWEEP_MIN_HZ) +
+      (Math.log(SWEEP_MAX_HZ) - Math.log(SWEEP_MIN_HZ)) * clamp(pos, 0, 1),
+  );
+  // Round to a resolution that reads cleanly at each end of the scale
+  return hz < 1000 ? Math.round(hz) : Math.round(hz / 10) * 10;
 }
 
 function formatApoFreq(hz) {
@@ -137,7 +169,10 @@ export function ProfileStep({
 
   const [demoPlaying, setDemoPlaying] = useState(false);
   const [demoMode, setDemoMode] = useState("after");
-  const [demoSignal, setDemoSignal] = useState("melody");
+  const [demoTone, setDemoTone] = useState("sweep"); // "sweep" | "fixed"
+  const [toneHz, setToneHz] = useState(1000);
+  const [sweepSpeed, setSweepSpeed] = useState(1);
+  const [sweepHz, setSweepHz] = useState(null);
   const demoRef = useRef(null);
   const [savedProfiles, setSavedProfiles] = useState(() => loadProfiles());
 
@@ -260,15 +295,18 @@ export function ProfileStep({
   const leftBands = finalEq.map((e) => e.leftDb + globalPreamp);
   const rightBands = finalEq.map((e) => e.rightDb + globalPreamp);
 
-  function startDemoSource(mode = demoMode, signal = demoSignal) {
+  function startDemoSource(mode = demoMode, speed = sweepSpeed) {
     const useEq = mode === "after";
-    const baseArgs = {
+    return playToneSweep({
       freqs,
       leftBands: useEq ? leftBands : null,
       rightBands: useEq ? rightBands : null,
       gainDb: -10,
-    };
-    return signal === "tone" ? playToneSweep(baseArgs) : playDemo(baseArgs);
+      cycleSec: SWEEP_BASE_SEC / speed,
+      holdFreq: demoTone === "fixed" ? toneHz : null,
+      minHz: SWEEP_MIN_HZ,
+      maxHz: SWEEP_MAX_HZ,
+    });
   }
 
   const toggleDemo = () => {
@@ -276,6 +314,7 @@ export function ProfileStep({
       demoRef.current?.stop();
       demoRef.current = null;
       setDemoPlaying(false);
+      setSweepHz(null);
     } else {
       demoRef.current = startDemoSource();
       setDemoPlaying(true);
@@ -286,17 +325,46 @@ export function ProfileStep({
     setDemoMode(mode);
     if (demoPlaying) {
       demoRef.current?.stop();
-      demoRef.current = startDemoSource(mode, demoSignal);
+      demoRef.current = startDemoSource(mode, sweepSpeed);
     }
   };
 
-  const switchDemoSignal = (signal) => {
-    setDemoSignal(signal);
-    if (demoPlaying) {
-      demoRef.current?.stop();
-      demoRef.current = startDemoSource(demoMode, signal);
-    }
+  const changeSweepSpeed = (speed) => {
+    setSweepSpeed(speed);
+    demoRef.current?.setCycleSec(SWEEP_BASE_SEC / speed);
   };
+
+  // Sweep <-> fixed tone switches on the live source, so the comparison
+  // is not interrupted.
+  const switchDemoTone = (tone) => {
+    setDemoTone(tone);
+    demoRef.current?.setHoldFreq(tone === "fixed" ? toneHz : null);
+  };
+
+  const pickToneHz = (hz) => {
+    setToneHz(hz);
+    if (demoTone === "fixed") demoRef.current?.setHoldFreq(hz);
+  };
+
+  // In fixed mode the chosen tone is shown even when stopped; while sweeping,
+  // the readout follows the audio.
+  const displayHz =
+    demoTone === "fixed" ? toneHz : demoPlaying ? sweepHz : null;
+  // Position of that tone on the log-frequency track, 0-100%
+  const sweepPct = Number.isFinite(displayHz) ? hzToPos(displayHz) * 100 : 0;
+
+  // Live frequency readout while the sweep is playing
+  useEffect(() => {
+    if (!demoPlaying || demoTone !== "sweep") return;
+    let raf = 0;
+    const tick = () => {
+      const hz = demoRef.current?.getFrequency();
+      if (Number.isFinite(hz)) setSweepHz(hz);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [demoPlaying, demoTone]);
 
   // ── Export / save helpers ──────────────────────────────────────────────────
 
@@ -699,25 +767,106 @@ export function ProfileStep({
           <div className="panel-title">Before / after comparison</div>
         </div>
         <p className="panel-body">
-          Choose a preview signal, then toggle between <strong>Flat</strong>{" "}
-          and <strong>Corrected</strong>. The <strong>Full tone sweep</strong>{" "}
-          is best for checking that the sound stays centered instead of drifting
-          left or right by frequency.
+          A tone plays while you toggle between <strong>Flat</strong> and{" "}
+          <strong>Corrected</strong>. Listen for the sound staying centered
+          instead of drifting left or right. Use the <strong>sweep</strong> to
+          cover the whole range, or hold a <strong>single tone</strong> at any
+          frequency up to 14 kHz.
         </p>
-        <div className="ba-toggle" style={{ marginBottom: 8 }}>
+
+        <div className="ba-toggle" style={{ marginBottom: 12 }}>
           <button
-            className={demoSignal === "melody" ? "is-on" : ""}
-            onClick={() => switchDemoSignal("melody")}
+            className={demoTone === "sweep" ? "is-on" : ""}
+            onClick={() => switchDemoTone("sweep")}
           >
-            Melody sweep
+            Full sweep
           </button>
           <button
-            className={demoSignal === "tone" ? "is-on" : ""}
-            onClick={() => switchDemoSignal("tone")}
+            className={demoTone === "fixed" ? "is-on" : ""}
+            onClick={() => switchDemoTone("fixed")}
           >
-            Full tone sweep
+            Single tone
           </button>
         </div>
+
+        <div className="sweep-readout">
+          <div className="sweep-hz">{fmtSweepHz(displayHz)}</div>
+          <div className="sweep-track">
+            <div
+              className="sweep-dot"
+              style={{ left: `${sweepPct}%`, opacity: demoPlaying ? 1 : 0.4 }}
+            />
+          </div>
+          <div className="sweep-ends">
+            <span>{fmtSweepHz(SWEEP_MIN_HZ)}</span>
+            <span>{fmtSweepHz(SWEEP_MAX_HZ)}</span>
+          </div>
+        </div>
+
+        {demoTone === "sweep" ? (
+          <div className="db-slider" style={{ marginBottom: 10 }}>
+            <div className="db-labels">
+              <span>Sweep speed</span>
+              <span className="db-val">
+                {sweepSpeed.toFixed(1)}&times;
+                <span className="bs-unit">
+                  {" "}
+                  &middot; {(SWEEP_BASE_SEC / sweepSpeed).toFixed(1)} s / cycle
+                </span>
+              </span>
+            </div>
+            <input
+              type="range"
+              min={SWEEP_SPEED_MIN}
+              max={SWEEP_SPEED_MAX}
+              step={0.1}
+              value={sweepSpeed}
+              onChange={(e) => changeSweepSpeed(Number(e.target.value))}
+            />
+            <div className="db-ticks">
+              <span>Slow</span>
+              <span>Fast</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 10 }}>
+            <div className="db-slider">
+              <div className="db-labels">
+                <span>Tone frequency</span>
+                <span className="db-val">{fmtSweepHz(toneHz)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={TONE_STEPS}
+                step={1}
+                value={Math.round(hzToPos(toneHz) * TONE_STEPS)}
+                onChange={(e) =>
+                  pickToneHz(posToHz(Number(e.target.value) / TONE_STEPS))
+                }
+              />
+              <div className="db-ticks">
+                <span>{fmtSweepHz(SWEEP_MIN_HZ)}</span>
+                <span>{fmtSweepHz(SWEEP_MAX_HZ)}</span>
+              </div>
+            </div>
+            <div className="band-strip-wrap" style={{ marginTop: 8 }}>
+              <div className="band-strip">
+                {freqs.map((f, i) => (
+                  <button
+                    key={f}
+                    className={`band-cell ${f === toneHz ? "band-active" : "band-idle"}`}
+                    onClick={() => pickToneHz(f)}
+                  >
+                    <span className="band-label">{freqShort[i]}</span>
+                    <span className="band-unit">Hz</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="ba-toggle">
           <button
             className={demoMode === "before" ? "is-on" : ""}

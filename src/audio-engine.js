@@ -331,20 +331,26 @@ export function playReference({ kind = "rub", gainDb = -30 }) {
 //
 // Useful for checking center stability: if the corrected profile is balanced,
 // the sweep should stay centered rather than drifting left/right by frequency.
+// Speed (setCycleSec) and holding a single frequency (setHoldFreq) can both be
+// changed while playing; getFrequency() reports the tone currently audible.
 //
 export function playToneSweep({
   leftBands = null,
   rightBands = null,
   freqs = ISO_FREQS,
   gainDb = -16,
-  upSec = 4.6,
-  downSec = 4.6,
+  cycleSec = 9.2,
+  holdFreq = null,
+  minHz = null,
+  maxHz = null,
 }) {
   const c = getCtx();
   const fs = freqs || ISO_FREQS;
   const sorted = [...fs].sort((a, b) => a - b);
-  const lowHz = Math.max(60, sorted[0] * 0.7);
-  const highHz = Math.min(12000, sorted[sorted.length - 1] * 1.25);
+  // Sweep ends default to just outside the tested bands, but callers can widen
+  // the scale (the preview runs to 14 kHz, past the highest tested band).
+  const lowHz = minHz ?? Math.max(60, sorted[0] * 0.7);
+  const highHz = maxHz ?? Math.min(14000, sorted[sorted.length - 1] * 1.25);
 
   const out = c.createGain();
   out.gain.value = dbToGain(gainDb);
@@ -387,38 +393,80 @@ export function playToneSweep({
   toneGain.gain.linearRampToValueAtTime(1, now + 0.08);
   osc.start();
 
-  const cycleSec = upSec + downSec;
   let stopped = false;
+  // Sweep duration for one full low->high->low cycle; changeable while playing.
+  let cycle = Math.max(1, cycleSec);
+  // When set, the tone parks on this frequency instead of sweeping.
+  let holdHz = Number.isFinite(holdFreq) ? holdFreq : null;
 
   // Smooth 0->1->0 shape in log-frequency space, so loop boundaries
   // land with zero slope and avoid audible seam beeps.
-  const curveLen = 1024;
   const lnLow = Math.log(lowHz);
   const lnHigh = Math.log(highHz);
-  const sweepCurve = new Float32Array(curveLen);
-  for (let i = 0; i < curveLen; i++) {
-    const phase = i / (curveLen - 1);
+  function freqAt(phase) {
     const shape = 0.5 - 0.5 * Math.cos(2 * Math.PI * phase); // 0 -> 1 -> 0
-    sweepCurve[i] = Math.exp(lnLow + (lnHigh - lnLow) * shape);
+    return Math.exp(lnLow + (lnHigh - lnLow) * shape);
   }
 
-  function scheduleCycle(t0) {
-    osc.frequency.setValueCurveAtTime(sweepCurve, t0, cycleSec);
-  }
+  // The sweep is scheduled in short ramp steps instead of one long value curve,
+  // so the speed can change mid-flight and the current tone can be read back
+  // for display. Steps are small enough that a linear ramp in Hz is smooth.
+  const STEP_SEC = 0.03;
+  const LOOKAHEAD_SEC = 0.25;
 
-  let nextCycleAt = now + 0.1;
-  scheduleCycle(nextCycleAt);
-  nextCycleAt += cycleSec;
+  let phase = 0;
+  let schedTime = now + 0.05;
+  // Scheduled (time, frequency) points, pruned as playback passes them.
+  const points = [{ t: schedTime, f: holdHz ?? freqAt(phase) }];
+  osc.frequency.setValueAtTime(points[0].f, schedTime);
 
-  const loopTimer = setInterval(() => {
-    if (stopped) return;
-    if (c.currentTime >= nextCycleAt - 0.55) {
-      scheduleCycle(nextCycleAt);
-      nextCycleAt += cycleSec;
+  function pump() {
+    // If timers were throttled (background tab), resync instead of scheduling
+    // a long backlog of steps in the past.
+    if (schedTime < c.currentTime) {
+      schedTime = c.currentTime + 0.02;
+      points.length = 0;
+      points.push({ t: schedTime, f: holdHz ?? freqAt(phase) });
+      osc.frequency.cancelScheduledValues(c.currentTime);
+      osc.frequency.setValueAtTime(points[0].f, schedTime);
     }
-  }, 120);
+    const horizon = c.currentTime + LOOKAHEAD_SEC;
+    while (schedTime < horizon) {
+      schedTime += STEP_SEC;
+      // While holding, the phase is frozen so releasing resumes the sweep
+      // from where it left off.
+      let f;
+      if (holdHz != null) {
+        f = holdHz;
+      } else {
+        phase = (phase + STEP_SEC / cycle) % 1;
+        f = freqAt(phase);
+      }
+      osc.frequency.linearRampToValueAtTime(f, schedTime);
+      points.push({ t: schedTime, f });
+    }
+  }
+
+  pump();
+  const loopTimer = setInterval(() => {
+    if (!stopped) pump();
+  }, 60);
 
   return {
+    // Duration of one full low->high->low cycle, in seconds.
+    setCycleSec(sec) {
+      cycle = Math.max(1, sec);
+    },
+    // Park on one frequency (Hz), or pass null to resume sweeping.
+    setHoldFreq(hz) {
+      holdHz = Number.isFinite(hz) ? hz : null;
+    },
+    // Frequency currently being heard, for on-screen readout.
+    getFrequency() {
+      const t = c.currentTime;
+      while (points.length > 1 && points[1].t <= t) points.shift();
+      return points[0].f;
+    },
     stop(releaseMs = 120) {
       if (stopped) return;
       stopped = true;

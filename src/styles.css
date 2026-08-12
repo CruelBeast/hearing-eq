@@ -1478,6 +1478,48 @@ h2 {
     border-color: var(--line);
 }
 
+/* Sweep frequency readout (before/after preview) */
+.sweep-readout {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--bg-3);
+    border-radius: 8px;
+}
+.sweep-hz {
+    font-family: var(--mono);
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--fg);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.sweep-track {
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg-2);
+}
+.sweep-dot {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    border-radius: 50%;
+    background: var(--accent);
+    transform: translateY(-50%);
+}
+.sweep-ends {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--fg-4);
+}
+
 .stat-row {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
