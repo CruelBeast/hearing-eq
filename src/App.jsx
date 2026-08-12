@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import {
   buildStartDbForFreqs,
+  CUSTOM_FREQ_MAX_HZ,
+  CUSTOM_FREQ_MIN_HZ,
   DEFAULT_BAND_PRESET,
   STRENGTH,
   TEST_BAND_PRESETS,
@@ -49,10 +51,13 @@ function strengthKeyFromSavedPayload(payload) {
 }
 
 function normalizeCustomFreqs(freqs) {
+  const seen = new Set();
   return freqs
     .map((v) => Math.round(Number(v)))
     .filter((v) => Number.isFinite(v))
-    .filter((v) => v >= 60 && v <= 12000);
+    .filter((v) => v >= CUSTOM_FREQ_MIN_HZ && v <= CUSTOM_FREQ_MAX_HZ)
+    // A band can only be tested once, so drop any repeated frequency
+    .filter((v) => (seen.has(v) ? false : (seen.add(v), true)));
 }
 
 function buildCustomPreset(freqs) {

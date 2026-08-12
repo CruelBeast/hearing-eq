@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
+  CUSTOM_FREQ_MAX_HZ,
+  CUSTOM_FREQ_MIN_HZ,
   DEFAULT_BAND_PRESET,
   REPEATS,
   TEST_BAND_PRESETS,
@@ -63,6 +65,24 @@ export function SetupStep({
     Array.isArray(customFreqs) && customFreqs.length > 0
       ? customFreqs
       : TEST_BAND_PRESETS[DEFAULT_BAND_PRESET].freqs;
+  // Indices that repeat a frequency used by an earlier band — highlighted in
+  // the grid and reported separately from the range/order problems.
+  const duplicateIdx = useMemo(() => {
+    const firstSeenAt = new Map();
+    const dupes = new Set();
+    customFreqList.forEach((value, i) => {
+      const hz = Number(value);
+      if (!Number.isFinite(hz)) return;
+      if (firstSeenAt.has(hz)) {
+        dupes.add(firstSeenAt.get(hz));
+        dupes.add(i);
+      } else {
+        firstSeenAt.set(hz, i);
+      }
+    });
+    return dupes;
+  }, [customFreqList]);
+
   const customError = useMemo(() => {
     if (!customMode) return null;
     if (customFreqList.length < 3 || customFreqList.length > 12) {
@@ -70,15 +90,25 @@ export function SetupStep({
     }
     for (let i = 0; i < customFreqList.length; i++) {
       const hz = Number(customFreqList[i]);
-      if (!Number.isFinite(hz) || hz < 60 || hz > 12000) {
-        return "Each frequency must be between 60 Hz and 12 kHz.";
+      if (!Number.isFinite(hz) || hz < CUSTOM_FREQ_MIN_HZ || hz > CUSTOM_FREQ_MAX_HZ) {
+        return `Each frequency must be between ${freqLabelFromHz(
+          CUSTOM_FREQ_MIN_HZ,
+        )} and ${freqLabelFromHz(CUSTOM_FREQ_MAX_HZ)}.`;
       }
-      if (i > 0 && hz <= Number(customFreqList[i - 1])) {
-        return "Frequencies must be in strictly increasing order.";
+    }
+    if (duplicateIdx.size > 0) {
+      const bands = [...duplicateIdx].sort((a, b) => a - b).map((i) => i + 1);
+      return `Each frequency can only be tested once — bands ${bands.join(
+        ", ",
+      )} repeat a value.`;
+    }
+    for (let i = 1; i < customFreqList.length; i++) {
+      if (Number(customFreqList[i]) < Number(customFreqList[i - 1])) {
+        return "Frequencies must be in increasing order.";
       }
     }
     return null;
-  }, [customMode, customFreqList]);
+  }, [customMode, customFreqList, duplicateIdx]);
   const ready = quietConfirmed && !customError;
   const activePreset =
     customMode
@@ -233,15 +263,57 @@ export function SetupStep({
     return Math.max(3, Math.min(12, n));
   }
 
+  // A new band must not land on a frequency that is already tested: continue
+  // the series above the top band when there is room, otherwise fill the
+  // widest remaining gap, and in either case step to the nearest free value.
   function suggestNextFreq(freqs) {
-    if (freqs.length === 0) return 125;
-    if (freqs.length === 1) return Math.min(12000, Math.max(60, freqs[0] * 2));
-    const last = Number(freqs[freqs.length - 1]);
-    const prev = Number(freqs[freqs.length - 2]);
-    const ratio = last / Math.max(prev, 1);
-    let next = Math.round(last * Math.max(1.2, Math.min(ratio, 2)));
-    if (next <= last) next = last + 100;
-    return Math.min(12000, Math.max(60, next));
+    const used = new Set(
+      freqs.map((f) => Math.round(Number(f))).filter(Number.isFinite),
+    );
+    if (used.size === 0) return 125;
+
+    const isFree = (hz) =>
+      hz >= CUSTOM_FREQ_MIN_HZ && hz <= CUSTOM_FREQ_MAX_HZ && !used.has(hz);
+    const freeFrom = (hz) => {
+      for (let v = Math.round(hz); v <= CUSTOM_FREQ_MAX_HZ; v++) {
+        if (isFree(v)) return v;
+      }
+      return null;
+    };
+    const nearestFree = (hz) => {
+      const start = Math.round(hz);
+      for (let d = 0; d <= CUSTOM_FREQ_MAX_HZ - CUSTOM_FREQ_MIN_HZ; d++) {
+        if (isFree(start + d)) return start + d;
+        if (isFree(start - d)) return start - d;
+      }
+      return null;
+    };
+
+    const sorted = [...used].sort((a, b) => a - b);
+    const last = sorted[sorted.length - 1];
+    const prev = sorted.length > 1 ? sorted[sorted.length - 2] : last / 2;
+    const ratio = Math.max(1.2, Math.min(last / Math.max(prev, 1), 2));
+    const above = Math.round(last * ratio);
+    // Continue the series above the top band, or split what is left up to the
+    // ceiling once that would overshoot.
+    const target =
+      above <= CUSTOM_FREQ_MAX_HZ
+        ? above
+        : Math.round(Math.sqrt(last * CUSTOM_FREQ_MAX_HZ));
+    const higher = freeFrom(target);
+    if (higher !== null) return higher;
+
+    // Top of the range is full — split the widest gap on the log scale instead
+    let gapHz = null;
+    let widest = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      const r = sorted[i] / sorted[i - 1];
+      if (r > widest) {
+        widest = r;
+        gapHz = Math.round(Math.sqrt(sorted[i] * sorted[i - 1]));
+      }
+    }
+    return nearestFree(gapHz ?? CUSTOM_FREQ_MIN_HZ) ?? last;
   }
 
   function handleCustomCountChange(value) {
@@ -249,7 +321,13 @@ export function SetupStep({
     const count = clampCount(Math.round(Number(value) || customFreqList.length));
     let next = [...customFreqList];
     if (count > next.length) {
-      while (next.length < count) next.push(suggestNextFreq(next));
+      while (next.length < count) {
+        const hz = suggestNextFreq(next);
+        // Insert in place so an ordered list stays ordered
+        const at = next.findIndex((f) => Number(f) > hz);
+        if (at === -1) next.push(hz);
+        else next.splice(at, 0, hz);
+      }
     } else {
       next = next.slice(0, count);
     }
@@ -386,19 +464,22 @@ export function SetupStep({
                   <span className="custom-freq-label">Band {idx + 1}</span>
                   <input
                     type="number"
-                    min={60}
-                    max={12000}
+                    min={CUSTOM_FREQ_MIN_HZ}
+                    max={CUSTOM_FREQ_MAX_HZ}
                     step={1}
                     value={Number.isFinite(hz) ? hz : ""}
                     onChange={(e) => handleCustomFreqChange(idx, e.target.value)}
-                    className="custom-freq-input"
+                    className={`custom-freq-input${
+                      duplicateIdx.has(idx) ? " is-duplicate" : ""
+                    }`}
                   />
                 </label>
               ))}
             </div>
             <p className="custom-freq-hint">
-              Enter frequencies in Hz from low to high. Valid range: 60 Hz to
-              12 kHz.
+              Enter frequencies in Hz from low to high, each one only once.
+              Valid range: {freqLabelFromHz(CUSTOM_FREQ_MIN_HZ)} to{" "}
+              {freqLabelFromHz(CUSTOM_FREQ_MAX_HZ)}.
             </p>
             {customError && (
               <p className="custom-freq-hint custom-freq-error">{customError}</p>

@@ -18,6 +18,10 @@ export const TEST_BAND_PRESETS = {
   },
 };
 
+/** Frequency range allowed for custom tested bands (Hz) */
+export const CUSTOM_FREQ_MIN_HZ = 60;
+export const CUSTOM_FREQ_MAX_HZ = 14000;
+
 export const DEFAULT_BAND_PRESET = "standard8";
 const DEFAULT_BANDS = TEST_BAND_PRESETS[DEFAULT_BAND_PRESET];
 const START_DB_ANCHORS = DEFAULT_BANDS.freqs.map((f, i) => ({
