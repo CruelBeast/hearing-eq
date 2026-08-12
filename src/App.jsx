@@ -50,6 +50,14 @@ function strengthKeyFromSavedPayload(payload) {
   return matchLabel ? matchLabel[0] : "mild";
 }
 
+// Build stamp injected by vite.config.js. Shown in the footer so a deploy can
+// be identified without digging through headers.
+const buildStamp = new Date(__APP_BUILT_AT__)
+  .toISOString()
+  .slice(0, 16)
+  .replace("T", " ")
+  .concat(" UTC");
+
 function normalizeCustomFreqs(freqs) {
   const seen = new Set();
   return freqs
@@ -98,14 +106,24 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // Start every page at the top: browsers otherwise restore the old scroll
+  // position on reload, which lands you in the middle of a step.
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+  }, []);
+
+  // Any change of step or route is a new page, so scroll back up.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [stepIdx, route]);
+
   const navigateTo = (path) => {
     if (window.location.pathname !== path) {
       window.history.pushState({}, "", path);
     }
     setRoute(path);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
   };
 
   const handleSetupDone = () => {
@@ -151,9 +169,6 @@ export default function App() {
     setStepIdx(0);
     setThresholds(null);
     setProfileSeed(null);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
   };
 
   const showContact = route === "/contact";
@@ -169,6 +184,7 @@ export default function App() {
     }
     if (showContact) navigateTo("/");
     handleRestart();
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   };
 
   return (
@@ -305,6 +321,9 @@ export default function App() {
       <footer className="app-footer">
         <div className="app-footer-inner">
           <span>Copyright &copy; Ciprian M.</span>
+          <span className="app-version" title={`Built ${buildStamp}`}>
+            v{__APP_VERSION__} · {__APP_COMMIT__} · {buildStamp}
+          </span>
           <button
             type="button"
             className="footer-link"

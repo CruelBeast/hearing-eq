@@ -332,6 +332,15 @@ body {
     justify-content: space-between;
     gap: 16px;
 }
+/* Build stamp — sits between the copyright and the contact link */
+.app-version {
+    margin-right: auto;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    font-size: 10px;
+    color: var(--fg-4);
+    white-space: nowrap;
+}
 .footer-link {
     padding: 6px 10px;
     font-size: 10px;
